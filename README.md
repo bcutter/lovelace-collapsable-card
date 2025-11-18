@@ -21,7 +21,7 @@ Big thanks to [ofekashery, the author of vertical-stack-in-card](https://github.
 | buttonStyle| string  | "" | CSS overrides for the dropdown toggle button |
 | button_padding | string | "16px" (or "0px" if head is used) | CSS padding value for the toggle button (e.g., "16px", "10px 20px") |
 | content_padding | string | "8px" | CSS padding value for the card list when expanded (e.g., "8px", "12px") |
-| card_margin | string | "0" | CSS margin value for the card (e.g., "0", "8px", "10px 5px") |
+| card_margin | string | "0" | CSS margin value for the card. Applied to toggle button and directionally to card list: as margin-top when expanding upward, margin-bottom when expanding downward (e.g., "0", "8px", "10px 5px") |
 
 ## Installation
 
