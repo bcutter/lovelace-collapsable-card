@@ -19,6 +19,9 @@ Big thanks to [ofekashery, the author of vertical-stack-in-card](https://github.
 | content_alignment | string | "justify" | Determines how the content of the toggle button should be aligned.  Options are `left`, `center`, `right`, `justify` and `even`
 | title      | string  | "Toggle" | Button title                       |
 | buttonStyle| string  | "" | CSS overrides for the dropdown toggle button |
+| button_padding | string | "16px" (or "0px" if head is used) | CSS padding value for the toggle button (e.g., "16px", "10px 20px") |
+| content_padding | string | "8px" | CSS padding value for the card list when expanded (e.g., "8px", "12px") |
+| card_margin | string | "0" | CSS margin value for the card (e.g., "0", "8px", "10px 5px") |
 
 ## Installation
 

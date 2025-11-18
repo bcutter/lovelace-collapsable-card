@@ -52,6 +52,11 @@ class CollapsableCard extends HTMLElement {
       this.content_alignment = alignments[config.content_alignment];
     }
 
+    // Set margin and padding with defaults
+    this.button_padding = config.button_padding !== undefined ? config.button_padding : (this.show_head ? "0px" : "16px");
+    this.content_padding = config.content_padding !== undefined ? config.content_padding : "8px";
+    this.card_margin = config.card_margin !== undefined ? config.card_margin : "0";
+
     this._config = config;
     this._refCards = [];
     this.renderCard();
@@ -265,12 +270,12 @@ class CollapsableCard extends HTMLElement {
         text-align: left;
         background: var(--card-background-color);
         border: none;
-        margin: 0;
+        margin: ${this.card_margin};
         display: ${this.show_head ? "grid" : "flex"};
         justify-content: ${this.content_alignment ? this.content_alignment : "space-between"};
         align-items: center;
         width: 100%;
-        padding: ${this.show_head ? "0px" : "16px"};
+        padding: ${this.button_padding};
         border-radius: var(--ha-card-border-radius, 4px);
         cursor: pointer;
         ${this.show_head ? "align-self: start;" : ""}
@@ -305,8 +310,8 @@ class CollapsableCard extends HTMLElement {
         clip-path: unset;
         border: unset;
         white-space: unset;
-        ${this.show_head ? "" : this.expand_upward ? "padding-bottom: 8px;" : ""}
-        ${this.show_head ? "" : this.expand_upward ? "" : "padding-top: 8px;"}
+        ${this.show_head ? "" : this.expand_upward ? `padding-bottom: ${this.content_padding};` : ""}
+        ${this.show_head ? "" : this.expand_upward ? "" : `padding-top: ${this.content_padding};`}
       }
 
       .toggle-button__icon-${this.id} {
