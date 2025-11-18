@@ -1,0 +1,67 @@
+# Example configuration showing the new margin and padding properties
+
+# Example 1: Custom button padding
+type: 'custom:collapsable-card'
+title: 'Custom Button Padding'
+button_padding: '24px'
+cards:
+  - type: entities
+    entities:
+      - entity: light.living_room
+      - entity: light.bedroom
+
+# Example 2: Custom content padding
+type: 'custom:collapsable-card'
+title: 'Custom Content Padding'
+content_padding: '16px'
+cards:
+  - type: entities
+    entities:
+      - entity: light.living_room
+      - entity: light.bedroom
+
+# Example 3: Custom card margin
+type: 'custom:collapsable-card'
+title: 'Custom Card Margin'
+card_margin: '10px'
+cards:
+  - type: entities
+    entities:
+      - entity: light.living_room
+      - entity: light.bedroom
+
+# Example 4: All custom spacing values
+type: 'custom:collapsable-card'
+title: 'All Custom Values'
+button_padding: '20px 30px'  # vertical horizontal
+content_padding: '12px'
+card_margin: '8px 16px'  # vertical horizontal
+cards:
+  - type: entities
+    entities:
+      - entity: light.living_room
+      - entity: light.bedroom
+
+# Example 5: Compact layout with reduced spacing
+type: 'custom:collapsable-card'
+title: 'Compact Layout'
+button_padding: '8px'
+content_padding: '4px'
+card_margin: '0'
+cards:
+  - type: entities
+    entities:
+      - entity: light.living_room
+      - entity: light.bedroom
+
+# Example 6: Spacious layout with increased spacing
+type: 'custom:collapsable-card'
+title: 'Spacious Layout'
+button_padding: '32px'
+content_padding: '20px'
+card_margin: '16px'
+cards:
+  - type: entities
+    entities:
+      - entity: light.living_room
+      - entity: light.bedroom
