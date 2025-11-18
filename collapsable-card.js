@@ -303,7 +303,8 @@ class CollapsableCard extends HTMLElement {
         position: unset;
         width: unset;
         height: unset;
-        margin: ${this.card_margin};
+        margin: 0;
+        ${this.expand_upward ? `margin-top: ${this.card_margin};` : `margin-bottom: ${this.card_margin};`}
         padding: unset;
         overflow: unset;
         clip: unset;
