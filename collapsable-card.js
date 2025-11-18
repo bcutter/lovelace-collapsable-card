@@ -270,7 +270,8 @@ class CollapsableCard extends HTMLElement {
         text-align: left;
         background: var(--card-background-color);
         border: none;
-        margin: ${this.card_margin};
+        margin-top: ${this.expand_upward && this.isToggled ? `0;` : `${this.card_margin};`}
+        margin-bottom: ${!this.expand_upward && this.isToggled ? `0;` : `${this.card_margin};`}
         display: ${this.show_head ? "grid" : "flex"};
         justify-content: ${this.content_alignment ? this.content_alignment : "space-between"};
         align-items: center;
@@ -303,7 +304,7 @@ class CollapsableCard extends HTMLElement {
         position: unset;
         width: unset;
         height: unset;
-        margin: 0;
+        margin: unset;
         ${this.expand_upward ? `margin-top: ${this.card_margin};` : `margin-bottom: ${this.card_margin};`}
         padding: unset;
         overflow: unset;
