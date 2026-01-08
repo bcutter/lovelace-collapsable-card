@@ -5,15 +5,6 @@ class CollapsableCard extends HTMLElement {
     super();
   }
 
-  connectedCallback() {
-    // Sicherstellen, dass Toggle/Style erst nach DOM hängt
-    requestAnimationFrame(() => {
-      if (this._refCards && this.isToggled) {
-        this.styleCard(true);
-      }
-    });
-  }
-
   setConfig(config) {
     const alignments = {
       left: "left",
@@ -39,13 +30,31 @@ class CollapsableCard extends HTMLElement {
       this.isToggled = false;
     }
 
-    this.expand_upward = config.expand_upward ?? false;
-    this.show_icon = config.show_icon ?? true;
-    this.show_head = config.head !== undefined;
-    this.content_alignment = alignments[config.content_alignment] ?? undefined;
-    this.button_padding = config.button_padding ?? (this.show_head ? "0px" : "16px");
-    this.content_padding = config.content_padding ?? "8px";
-    this.card_margin = config.card_margin ?? "0";
+    if (!config.expand_upward) {
+      this.expand_upward = false;
+    } else {
+      this.expand_upward = config.expand_upward;
+    }
+
+    if (config.show_icon === undefined) {
+      this.show_icon = true;
+    } else {
+      this.show_icon = config.show_icon;
+    }
+
+    if (config.head === undefined) {
+      this.show_head = false;
+    } else {
+      this.show_head = true;
+    }
+
+    if (config.content_alignment && Object.keys(alignments).includes(config.content_alignment)) {
+      this.content_alignment = alignments[config.content_alignment];
+    }
+
+    this.button_padding = config.button_padding !== undefined ? config.button_padding : (this.show_head ? "0px" : "16px");
+    this.content_padding = config.content_padding !== undefined ? config.content_padding : "8px";
+    this.card_margin = config.card_margin !== undefined ? config.card_margin : "0";
 
     this._config = config;
     this._refCards = [];
@@ -63,7 +72,7 @@ class CollapsableCard extends HTMLElement {
       this.head.className = "head-card-" + this.id;
     }
 
-    const promises = config.cards.map((cfg) => this.createCardElement(cfg));
+    const promises = config.cards.map((config) => this.createCardElement(config));
     this._refCards = await Promise.all(promises);
 
     const card = document.createElement("ha-card");
@@ -71,13 +80,13 @@ class CollapsableCard extends HTMLElement {
     const cardList = document.createElement("div");
     this.cardList = cardList;
     card.style.overflow = "hidden";
-    this._refCards.forEach((c) => cardList.appendChild(c));
-    cardList.className = "card-list-" + this.id;
-    cardList.classList[this.isToggled ? "add" : "remove"]("is-toggled");
+    this._refCards.forEach((card) => cardList.appendChild(card));
+    this.cardList.className = "card-list-" + this.id;
+    this.cardList.classList[this.isToggled ? "add" : "remove"]("is-toggled");
 
     const toggleButton = this.createToggleButton();
 
-    if (this.expand_upward) {
+    if (this.expand_upward == true) {
       card.appendChild(cardList);
       card.appendChild(toggleButton);
     } else {
@@ -85,7 +94,9 @@ class CollapsableCard extends HTMLElement {
       card.appendChild(cardList);
     }
 
-    while (this.hasChildNodes()) this.removeChild(this.lastChild);
+    while (this.hasChildNodes()) {
+      this.removeChild(this.lastChild);
+    }
     this.appendChild(card);
 
     this._cardSize.resolve();
@@ -118,7 +129,6 @@ class CollapsableCard extends HTMLElement {
       toggleButton.innerHTML = this._config.title || "Toggle";
     }
     toggleButton.className = "card-content toggle-button-" + this.id;
-
     if (!this.show_head) {
       toggleButton.addEventListener("click", () => {
         this.isToggled = !this.isToggled;
@@ -126,10 +136,14 @@ class CollapsableCard extends HTMLElement {
       });
     }
 
+    if (this.show_head) {
+      toggleButton.appendChild(this.head);
+    }
+
     if (this.show_icon) {
       const icon = document.createElement("ha-icon");
       icon.className = "toggle-button__icon-" + this.id;
-      icon.setAttribute("icon", this.expand_upward ? "mdi:chevron-up" : "mdi:chevron-down");
+      icon.setAttribute("icon", this._config.expand_upward ? "mdi:chevron-up" : "mdi:chevron-down");
       if (this.show_head) {
         icon.addEventListener("click", () => {
           this.isToggled = !this.isToggled;
@@ -154,77 +168,110 @@ class CollapsableCard extends HTMLElement {
     }
 
     if (this._config.expand_text || this._config.collapse_text) {
-      this.toggleButton.innerHTML = isToggled ? this._config.collapse_text : this._config.expand_text;
-      if (this.show_icon) this.toggleButton.appendChild(this.icon);
+      this.toggleButton.innerHTML = isToggled
+        ? this._config.collapse_text
+        : this._config.expand_text;
+      if (this.show_icon) {
+        this.toggleButton.appendChild(this.icon);
+      }
     }
 
-    // Robust refresh
+    // ----- Legacy: height bug remains -----
     if (isToggled) {
-      [0, 50, 250].forEach((t) =>
-        setTimeout(() => window.dispatchEvent(new Event("resize")), t)
-      );
-
-      try {
-        const children = Array.from(this.cardList.querySelectorAll("*"));
-        children.forEach((el) => {
-          if (el?.updateComplete instanceof Promise) {
-            el.updateComplete.then(() => window.dispatchEvent(new Event("resize"))).catch(() => {});
-          }
-          ["rebuild", "updateChart", "refresh", "recalculate", "renderChart"].forEach((m) => {
-            if (el && typeof el[m] === "function") {
-              try { el[m](); } catch (e) {}
-            }
-          });
-        });
-      } catch (e) {}
+      requestAnimationFrame(() => {
+        try { window.dispatchEvent(new Event("resize")); } catch (e) {}
+      });
+      setTimeout(() => { try { window.dispatchEvent(new Event("resize")); } catch (e) {} }, 50);
+      setTimeout(() => { try { window.dispatchEvent(new Event("resize")); } catch (e) {} }, 250);
     }
   }
 
   async createCardElement(cardConfig) {
     const createError = (error, origConfig) => {
-      return createThing("hui-error-card", { type: "error", error, origConfig });
+      return createThing("hui-error-card", {
+        type: "error",
+        error,
+        origConfig,
+      });
     };
 
     const createThing = (tag, config) => {
       if (this.helpers) {
-        if (config.type === "divider") return this.helpers.createRowElement(config);
-        return this.helpers.createCardElement(config);
+        if (config.type === "divider") {
+          return this.helpers.createRowElement(config);
+        } else {
+          return this.helpers.createCardElement(config);
+        }
       }
+
       const element = document.createElement(tag);
-      try { element.setConfig(config); } catch (err) { console.error(tag, err); return createError(err.message, config); }
+      try {
+        element.setConfig(config);
+      } catch (err) {
+        console.error(tag, err);
+        return createError(err.message, config);
+      }
       return element;
     };
 
-    let tag = cardConfig.type.startsWith("divider") ? "hui-divider-row"
-      : cardConfig.type.startsWith("custom:") ? cardConfig.type.substr("custom:".length)
-      : `hui-${cardConfig.type}-card`;
+    let tag = cardConfig.type;
+    if (tag.startsWith("divider")) {
+      tag = `hui-divider-row`;
+    } else if (tag.startsWith("custom:")) {
+      tag = tag.substr("custom:".length);
+    } else {
+      tag = `hui-${tag}-card`;
+    }
 
     const element = createThing(tag, cardConfig);
     element.hass = this._hass;
-    element.addEventListener("ll-rebuild", (ev) => { ev.stopPropagation(); this.createCardElement(cardConfig).then(()=>this.renderCard()); }, { once: true });
+    element.addEventListener(
+      "ll-rebuild",
+      (ev) => {
+        ev.stopPropagation();
+        this.createCardElement(cardConfig).then(() => {
+          this.renderCard();
+        });
+      },
+      { once: true }
+    );
     return element;
   }
 
   set hass(hass) {
     this._hass = hass;
-    this._refCards?.forEach((card) => { card.hass = hass; });
-    if (this.head) this.head.hass = hass;
+    if (this._refCards) {
+      this._refCards.forEach((card) => {
+        card.hass = hass;
+      });
+    }
+    if (this.head) {
+      this.head.hass = hass;
+    }
   }
 
   _computeCardSize(card) {
-    if (typeof card.getCardSize === "function") return card.getCardSize();
-    return customElements.whenDefined(card.localName).then(() => this._computeCardSize(card)).catch(() => 1);
+    if (typeof card.getCardSize === "function") {
+      return card.getCardSize();
+    }
+    return customElements
+      .whenDefined(card.localName)
+      .then(() => this._computeCardSize(card))
+      .catch(() => 1);
   }
 
   async getCardSize() {
     await this._cardSize.promise;
     const sizes = await Promise.all(this._refCards.map(this._computeCardSize));
-    return sizes.reduce((a, b) => a + b, 0);
+    return sizes.reduce((a, b) => a + b);
   }
 
   getStyles() {
     return `
-      .head-card-${this.id} { grid-column: 1; grid-row: 1; }
+      .head-card-${this.id} {
+        grid-column: 1;
+        grid-row: 1;
+      }
 
       .toggle-button-${this.id} {
         color: var(--primary-text-color);
@@ -234,7 +281,7 @@ class CollapsableCard extends HTMLElement {
         margin-top: ${this.expand_upward && this.isToggled ? `0;` : `${this.card_margin};`}
         margin-bottom: ${!this.expand_upward && this.isToggled ? `0;` : `${this.card_margin};`}
         display: ${this.show_head ? "grid" : "flex"};
-        justify-content: ${this.content_alignment ?? "space-between"};
+        justify-content: ${this.content_alignment ? this.content_alignment : "space-between"};
         align-items: center;
         width: 100%;
         padding: ${this.button_padding};
@@ -243,16 +290,39 @@ class CollapsableCard extends HTMLElement {
         ${this.show_head ? "align-self: start;" : ""}
         ${this._config.buttonStyle || ""}
       }
-      .toggle-button-${this.id}:focus { outline: none; background-color: var(--card-background-color); }
+      .toggle-button-${this.id}:focus {
+        outline: none;
+        background-color: var(--card-background-color);
+      }
 
       .card-list-${this.id} {
-        max-height: 0;
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: 0;
+        padding: 0;
         overflow: hidden;
-        transition: max-height 0.25s ease;
-        width: 100%;
-        position: relative;
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        border: 0;
+        white-space: nowrap;
       }
-      .card-list-${this.id}.is-toggled { max-height: 3000px; }
+
+      .card-list-${this.id}.is-toggled {
+        position: unset;
+        width: unset;
+        height: unset;
+        margin: unset;
+        ${this.expand_upward ? `margin-top: ${this.card_margin};` : `margin-bottom: ${this.card_margin};`}
+        padding: unset;
+        overflow: unset;
+        clip: unset;
+        clip-path: unset;
+        border: unset;
+        white-space: unset;
+        ${this.show_head ? "" : this.expand_upward ? `padding-bottom: ${this.content_padding};` : ""}
+        ${this.show_head ? "" : this.expand_upward ? "" : `padding-top: ${this.content_padding};`}
+      }
 
       .toggle-button__icon-${this.id} {
         color: var(--paper-item-icon-color, #aaa);
@@ -263,7 +333,9 @@ class CollapsableCard extends HTMLElement {
         ${this.show_head ? "right: 16px;" : ""}
       }
 
-      .type-custom-collapsable-card { background: transparent; }
+      .type-custom-collapsable-card {
+        background: transparent;
+      }
     `;
   }
 }
