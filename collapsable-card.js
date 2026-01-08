@@ -1,4 +1,4 @@
-console.log(`%ccollapsable-card\n%cVersion: ${"0.0.1"}`, "color: rebeccapurple; font-weight: bold;", "");
+console.log(`%ccollapsable-card\n%cVersion: ${"0.0.1-HistoryPatch-2026-01-08"}`, "color: rebeccapurple; font-weight: bold;", "");
 
 class CollapsableCard extends HTMLElement {
   constructor() {
@@ -165,18 +165,30 @@ class CollapsableCard extends HTMLElement {
 
   styleCard(isToggled) {
     this.cardList.classList[isToggled ? "add" : "remove"]("is-toggled");
+
     if (this.show_icon) {
       const openIcon = this.expand_upward ? "mdi:chevron-up" : "mdi:chevron-down";
       const closeIcon = this.expand_upward ? "mdi:chevron-down" : "mdi:chevron-up";
       this.icon.setAttribute("icon", isToggled ? closeIcon : openIcon);
     }
+
     if (this._config.expand_text || this._config.collapse_text) {
-      this.toggleButton.innerHTML = isToggled ? this._config.collapse_text : this._config.expand_text;
+      this.toggleButton.innerHTML = isToggled
+        ? this._config.collapse_text
+        : this._config.expand_text;
       if (this.show_icon) {
         this.toggleButton.appendChild(this.icon);
       }
     }
+
+    // 🔴 FIX: force reflow / resize when card becomes visible
+    if (isToggled) {
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+    }
   }
+
 
   async createCardElement(cardConfig) {
     const createError = (error, origConfig) => {
