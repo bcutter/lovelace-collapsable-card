@@ -165,13 +165,13 @@ class CollapsableCard extends HTMLElement {
 
   styleCard(isToggled) {
     this.cardList.classList[isToggled ? "add" : "remove"]("is-toggled");
-
+  
     if (this.show_icon) {
       const openIcon = this.expand_upward ? "mdi:chevron-up" : "mdi:chevron-down";
       const closeIcon = this.expand_upward ? "mdi:chevron-down" : "mdi:chevron-up";
       this.icon.setAttribute("icon", isToggled ? closeIcon : openIcon);
     }
-
+  
     if (this._config.expand_text || this._config.collapse_text) {
       this.toggleButton.innerHTML = isToggled
         ? this._config.collapse_text
@@ -180,15 +180,46 @@ class CollapsableCard extends HTMLElement {
         this.toggleButton.appendChild(this.icon);
       }
     }
-
-    // 🔴 FIX: force reflow / resize when card becomes visible
+  
+    // ---- Robust refresh sequence when card becomes visible ----
     if (isToggled) {
+      // 1) Let the DOM settle one frame, then dispatch a resize
       requestAnimationFrame(() => {
-        window.dispatchEvent(new Event("resize"));
+        try { window.dispatchEvent(new Event("resize")); } catch (e) {}
       });
+  
+      // 2) Dispatch an extra resize after a short delay (covers async inits)
+      setTimeout(() => {
+        try { window.dispatchEvent(new Event("resize")); } catch (e) {}
+      }, 50);
+  
+      // 3) Another resize a bit later to catch slow inits (history-graph etc.)
+      setTimeout(() => {
+        try { window.dispatchEvent(new Event("resize")); } catch (e) {}
+      }, 250);
+  
+      // 4) Try to await/update child Lit-elements where possible
+      //    and call any common refresh/rebuild methods if present.
+      try {
+        // query the actual children that are the cards inside
+        const children = Array.from(this.cardList.querySelectorAll("*"));
+        children.forEach((el) => {
+          // if it's a Lit element, wait for its updateComplete then dispatch resize
+          if (el && el.updateComplete instanceof Promise) {
+            el.updateComplete.then(() => {
+              try { window.dispatchEvent(new Event("resize")); } catch (e) {}
+            }).catch(()=>{});
+          }
+          // attempt to call common refresh/rebuild methods used by some cards
+          ["rebuild", "updateChart", "refresh", "recalculate", "renderChart"].forEach((m) => {
+            if (el && typeof el[m] === "function") {
+              try { el[m](); } catch (e) {}
+            }
+          });
+        });
+      } catch (e) {}
     }
   }
-
 
   async createCardElement(cardConfig) {
     const createError = (error, origConfig) => {
