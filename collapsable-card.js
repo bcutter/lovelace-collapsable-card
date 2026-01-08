@@ -1,4 +1,4 @@
-console.log(`%ccollapsable-card\n%cVersion: ${"0.0.1-HistoryPatch-2026-01-08"}`, "color: rebeccapurple; font-weight: bold;", "");
+console.log(`%ccollapsable-card\n%cVersion: ${"0.0.1-HistoryPatch-2026-01-08-FixHeight"}`, "color: rebeccapurple; font-weight: bold;", "");
 
 class CollapsableCard extends HTMLElement {
   constructor() {
@@ -245,14 +245,34 @@ class CollapsableCard extends HTMLElement {
       }
       .toggle-button-${this.id}:focus { outline: none; background-color: var(--card-background-color); }
 
+      /* --- alte Höhe-Logik zurück --- */
       .card-list-${this.id} {
-        max-height: 0;
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: 0;
+        padding: 0;
         overflow: hidden;
-        transition: max-height 0.25s ease;
-        width: 100%;
-        position: relative;
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        border: 0;
+        white-space: nowrap;
       }
-      .card-list-${this.id}.is-toggled { max-height: 3000px; }
+      .card-list-${this.id}.is-toggled {
+        position: unset;
+        width: unset;
+        height: unset;
+        margin: unset;
+        ${this.expand_upward ? `margin-top: ${this.card_margin};` : `margin-bottom: ${this.card_margin};`}
+        padding: unset;
+        overflow: unset;
+        clip: unset;
+        clip-path: unset;
+        border: unset;
+        white-space: unset;
+        ${this.show_head ? "" : this.expand_upward ? `padding-bottom: ${this.content_padding};` : ""}
+        ${this.show_head ? "" : this.expand_upward ? "" : `padding-top: ${this.content_padding};`}
+      }
 
       .toggle-button__icon-${this.id} {
         color: var(--paper-item-icon-color, #aaa);
