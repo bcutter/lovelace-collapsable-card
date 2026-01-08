@@ -1,17 +1,8 @@
-console.log(`%ccollapsable-card\n%cVersion: ${"0.0.1-HistoryPatch-2026-01-08"}`, "color: rebeccapurple; font-weight: bold;", "");
+console.log(`%ccollapsable-card\n%cVersion: ${"0.0.1-HistoryPatch-2026-01-08-DynHeight"}`, "color: rebeccapurple; font-weight: bold;", "");
 
 class CollapsableCard extends HTMLElement {
   constructor() {
     super();
-  }
-
-  connectedCallback() {
-    // Sicherstellen, dass Toggle/Style erst nach DOM hängt
-    requestAnimationFrame(() => {
-      if (this._refCards && this.isToggled) {
-        this.styleCard(true);
-      }
-    });
   }
 
   setConfig(config) {
@@ -39,13 +30,13 @@ class CollapsableCard extends HTMLElement {
       this.isToggled = false;
     }
 
-    this.expand_upward = config.expand_upward ?? false;
-    this.show_icon = config.show_icon ?? true;
+    this.expand_upward = config.expand_upward === true;
+    this.show_icon = config.show_icon !== false;
     this.show_head = config.head !== undefined;
-    this.content_alignment = alignments[config.content_alignment] ?? undefined;
-    this.button_padding = config.button_padding ?? (this.show_head ? "0px" : "16px");
-    this.content_padding = config.content_padding ?? "8px";
-    this.card_margin = config.card_margin ?? "0";
+    this.content_alignment = alignments[config.content_alignment] || "space-between";
+    this.button_padding = config.button_padding !== undefined ? config.button_padding : (this.show_head ? "0px" : "16px");
+    this.content_padding = config.content_padding !== undefined ? config.content_padding : "8px";
+    this.card_margin = config.card_margin !== undefined ? config.card_margin : "0";
 
     this._config = config;
     this._refCards = [];
@@ -54,9 +45,7 @@ class CollapsableCard extends HTMLElement {
 
   async renderCard() {
     const config = this._config;
-    if (window.loadCardHelpers) {
-      this.helpers = await window.loadCardHelpers();
-    }
+    if (window.loadCardHelpers) this.helpers = await window.loadCardHelpers();
 
     if (this.show_head) {
       this.head = await this.createCardElement(config.head);
@@ -71,9 +60,10 @@ class CollapsableCard extends HTMLElement {
     const cardList = document.createElement("div");
     this.cardList = cardList;
     card.style.overflow = "hidden";
+
     this._refCards.forEach((c) => cardList.appendChild(c));
-    cardList.className = "card-list-" + this.id;
-    cardList.classList[this.isToggled ? "add" : "remove"]("is-toggled");
+    this.cardList.className = "card-list-" + this.id;
+    cardList.style.overflow = "hidden";
 
     const toggleButton = this.createToggleButton();
 
@@ -94,9 +84,13 @@ class CollapsableCard extends HTMLElement {
     styleTag.innerHTML = this.getStyles();
     card.appendChild(styleTag);
 
+    // Wenn contain-toggled, Button automatisch klicken
     if (config.defaultOpen === "contain-toggled" && config.cards.filter((c) => this.checkActiveCard(c)).length > 0) {
       toggleButton.click();
     }
+
+    // Direkt nach Render Höhe setzen, falls geöffnet
+    if (this.isToggled) this.updateCardHeight();
   }
 
   checkActiveCard(card) {
@@ -108,34 +102,25 @@ class CollapsableCard extends HTMLElement {
 
   createToggleButton() {
     const toggleButton = document.createElement("button");
-    if (this.show_head) {
-      toggleButton.appendChild(this.head);
-    } else if (this._config.expand_text && !this.isToggled) {
-      toggleButton.innerHTML = this._config.expand_text;
-    } else if (this._config.collapse_text && this.isToggled) {
-      toggleButton.innerHTML = this._config.collapse_text;
-    } else {
-      toggleButton.innerHTML = this._config.title || "Toggle";
-    }
-    toggleButton.className = "card-content toggle-button-" + this.id;
+    if (this.show_head) toggleButton.appendChild(this.head);
+    else if (this._config.expand_text && !this.isToggled) toggleButton.innerHTML = this._config.expand_text;
+    else if (this._config.collapse_text && this.isToggled) toggleButton.innerHTML = this._config.collapse_text;
+    else toggleButton.innerHTML = this._config.title || "Toggle";
 
-    if (!this.show_head) {
-      toggleButton.addEventListener("click", () => {
-        this.isToggled = !this.isToggled;
-        this.styleCard(this.isToggled);
-      });
-    }
+    toggleButton.className = "card-content toggle-button-" + this.id;
+    if (!this.show_head) toggleButton.addEventListener("click", () => {
+      this.isToggled = !this.isToggled;
+      this.styleCard(this.isToggled);
+    });
 
     if (this.show_icon) {
       const icon = document.createElement("ha-icon");
       icon.className = "toggle-button__icon-" + this.id;
       icon.setAttribute("icon", this.expand_upward ? "mdi:chevron-up" : "mdi:chevron-down");
-      if (this.show_head) {
-        icon.addEventListener("click", () => {
-          this.isToggled = !this.isToggled;
-          this.styleCard(this.isToggled);
-        });
-      }
+      if (this.show_head) icon.addEventListener("click", () => {
+        this.isToggled = !this.isToggled;
+        this.styleCard(this.isToggled);
+      });
       this.icon = icon;
       toggleButton.appendChild(icon);
     }
@@ -145,39 +130,28 @@ class CollapsableCard extends HTMLElement {
   }
 
   styleCard(isToggled) {
-    this.cardList.classList[isToggled ? "add" : "remove"]("is-toggled");
+    if (isToggled) this.updateCardHeight();
+    else this.cardList.style.height = "0px";
 
+    // Icon + Text
     if (this.show_icon) {
       const openIcon = this.expand_upward ? "mdi:chevron-up" : "mdi:chevron-down";
       const closeIcon = this.expand_upward ? "mdi:chevron-down" : "mdi:chevron-up";
       this.icon.setAttribute("icon", isToggled ? closeIcon : openIcon);
     }
-
     if (this._config.expand_text || this._config.collapse_text) {
       this.toggleButton.innerHTML = isToggled ? this._config.collapse_text : this._config.expand_text;
       if (this.show_icon) this.toggleButton.appendChild(this.icon);
     }
 
-    // Robust refresh
-    if (isToggled) {
-      [0, 50, 250].forEach((t) =>
-        setTimeout(() => window.dispatchEvent(new Event("resize")), t)
-      );
+    // Resize events für Charts etc.
+    [0,50,250].forEach((t) => setTimeout(() => window.dispatchEvent(new Event("resize")), t));
+  }
 
-      try {
-        const children = Array.from(this.cardList.querySelectorAll("*"));
-        children.forEach((el) => {
-          if (el?.updateComplete instanceof Promise) {
-            el.updateComplete.then(() => window.dispatchEvent(new Event("resize"))).catch(() => {});
-          }
-          ["rebuild", "updateChart", "refresh", "recalculate", "renderChart"].forEach((m) => {
-            if (el && typeof el[m] === "function") {
-              try { el[m](); } catch (e) {}
-            }
-          });
-        });
-      } catch (e) {}
-    }
+  updateCardHeight() {
+    // dynamische Höhe anhand des Inhalts
+    const scrollHeight = this.cardList.scrollHeight;
+    this.cardList.style.height = scrollHeight + "px";
   }
 
   async createCardElement(cardConfig) {
@@ -188,26 +162,31 @@ class CollapsableCard extends HTMLElement {
     const createThing = (tag, config) => {
       if (this.helpers) {
         if (config.type === "divider") return this.helpers.createRowElement(config);
-        return this.helpers.createCardElement(config);
+        else return this.helpers.createCardElement(config);
       }
       const element = document.createElement(tag);
       try { element.setConfig(config); } catch (err) { console.error(tag, err); return createError(err.message, config); }
       return element;
     };
 
-    let tag = cardConfig.type.startsWith("divider") ? "hui-divider-row"
-      : cardConfig.type.startsWith("custom:") ? cardConfig.type.substr("custom:".length)
-      : `hui-${cardConfig.type}-card`;
+    let tag = cardConfig.type;
+    if (tag.startsWith("divider")) tag = `hui-divider-row`;
+    else if (tag.startsWith("custom:")) tag = tag.substr("custom:".length);
+    else tag = `hui-${tag}-card`;
 
     const element = createThing(tag, cardConfig);
     element.hass = this._hass;
-    element.addEventListener("ll-rebuild", (ev) => { ev.stopPropagation(); this.createCardElement(cardConfig).then(()=>this.renderCard()); }, { once: true });
+    element.addEventListener("ll-rebuild", (ev) => {
+      ev.stopPropagation();
+      this.createCardElement(cardConfig).then(() => this.renderCard());
+    }, { once: true });
+
     return element;
   }
 
   set hass(hass) {
     this._hass = hass;
-    this._refCards?.forEach((card) => { card.hass = hass; });
+    if (this._refCards) this._refCards.forEach((card) => { card.hass = hass; });
     if (this.head) this.head.hass = hass;
   }
 
@@ -219,50 +198,35 @@ class CollapsableCard extends HTMLElement {
   async getCardSize() {
     await this._cardSize.promise;
     const sizes = await Promise.all(this._refCards.map(this._computeCardSize));
-    return sizes.reduce((a, b) => a + b, 0);
+    return sizes.reduce((a, b) => a + b);
   }
 
   getStyles() {
     return `
       .head-card-${this.id} { grid-column: 1; grid-row: 1; }
-
       .toggle-button-${this.id} {
         color: var(--primary-text-color);
         text-align: left;
         background: var(--card-background-color);
         border: none;
-        margin-top: ${this.expand_upward && this.isToggled ? `0;` : `${this.card_margin};`}
-        margin-bottom: ${!this.expand_upward && this.isToggled ? `0;` : `${this.card_margin};`}
         display: ${this.show_head ? "grid" : "flex"};
-        justify-content: ${this.content_alignment ?? "space-between"};
+        justify-content: ${this.content_alignment};
         align-items: center;
         width: 100%;
         padding: ${this.button_padding};
         border-radius: var(--ha-card-border-radius, 4px);
         cursor: pointer;
-        ${this.show_head ? "align-self: start;" : ""}
         ${this._config.buttonStyle || ""}
       }
-      .toggle-button-${this.id}:focus { outline: none; background-color: var(--card-background-color); }
-
+      .toggle-button-${this.id}:focus { outline: none; }
       .card-list-${this.id} {
-        max-height: 0;
         overflow: hidden;
-        transition: max-height 0.25s ease;
-        width: 100%;
-        position: relative;
+        height: 0px;
+        transition: height 0.3s ease;
       }
-      .card-list-${this.id}.is-toggled { max-height: 3000px; }
-
       .toggle-button__icon-${this.id} {
         color: var(--paper-item-icon-color, #aaa);
-        ${this.show_head ? "grid-column: 1;" : ""}
-        ${this.show_head ? "grid-row: 1;" : ""}
-        ${this.show_head ? "position: absolute;" : ""}
-        ${this.show_head ? "top: 16px;" : ""}
-        ${this.show_head ? "right: 16px;" : ""}
       }
-
       .type-custom-collapsable-card { background: transparent; }
     `;
   }
